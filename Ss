@@ -1,0 +1,98 @@
+import timeit
+from math import sqrt
+
+# Часть 1: Рекурсивная генерация путей с ограничениями
+def generate_paths_with_constraints(points, min_distance, max_total_distance, current_path=None, used_points=None):
+    """
+    Рекурсивная функция для генерации путей с учетом ограничений.
+    """
+    if current_path is None:
+        current_path = []
+    if used_points is None:
+        used_points = set()
+
+    # Если путь завершен, проверяем его длину
+    if len(current_path) == len(points):
+        return [current_path] if calculate_distance(current_path) <= max_total_distance else []
+
+    valid_paths = []
+    for point in points:
+        if point in used_points:
+            continue
+
+        # Проверяем минимальное расстояние до последней точки в пути
+        if current_path and euclidean_distance(current_path[-1], point) < min_distance:
+            continue
+
+        # Добавляем точку в путь и продолжаем строить
+        new_path = current_path + [point]
+        new_used_points = used_points | {point}
+
+        # Проверяем, не превышает ли текущая длина пути максимальную
+        if calculate_distance(new_path) > max_total_distance:
+            continue
+
+        # Рекурсивно продолжаем строить путь
+        valid_paths.extend(generate_paths_with_constraints(points, min_distance, max_total_distance, new_path, new_used_points))
+
+    return valid_paths
+
+# Вспомогательная функция для вычисления евклидова расстояния между двумя точками
+def euclidean_distance(point1, point2):
+    x1, y1 = point1
+    x2, y2 = point2
+    return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+# Функция для вычисления суммарного расстояния для заданного пути
+def calculate_distance(path):
+    distance = 0
+    for i in range(len(path) - 1):
+        distance += euclidean_distance(path[i], path[i + 1])
+    return distance
+
+# Часть 2: Сравнение времени выполнения
+def compare_methods(points, min_distance, max_total_distance):
+    # Метод без оптимизации (полный перебор)
+    def full_permutation_method():
+        all_paths = list(permutations(points))
+        return [
+            (path, calculate_distance(path))
+            for path in all_paths
+            if all(
+                euclidean_distance(path[i], path[i + 1]) >= min_distance
+                for i in range(len(path) - 1)
+            )
+            and calculate_distance(path) <= max_total_distance
+        ]
+
+    # Метод с оптимизацией (рекурсия с отсечением)
+    def optimized_method():
+        return generate_paths_with_constraints(points, min_distance, max_total_distance)
+
+    # Измерение времени выполнения
+    time_full_permutation = timeit.timeit(lambda: full_permutation_method(), number=1)
+    time_optimized = timeit.timeit(lambda: optimized_method(), number=1)
+
+    return time_full_permutation, time_optimized
+
+# Ввод данных
+K = 4  # Количество точек
+points = [(1, 1), (2, 3), (3, 2), (4, 4)]  # Координаты точек
+min_distance = 1.5  # Минимальное расстояние между соседними точками
+max_total_distance = 10.0  # Максимальная суммарная длина пути
+
+# Сравнение времени выполнения
+time_full_permutation, time_optimized = compare_methods(points, min_distance, max_total_distance)
+
+print("Сравнение времени выполнения:")
+print(f"Метод полного перебора: {time_full_permutation:.6f} секунд")
+print(f"Оптимизированный метод: {time_optimized:.6f} секунд")
+
+# Генерация оптимальных путей с использованием оптимизированного метода
+optimal_paths = generate_paths_with_constraints(points, min_distance, max_total_distance)
+if optimal_paths:
+    print(f"\nНайдено {len(optimal_paths)} оптимальных путей:")
+    for i, path in enumerate(optimal_paths, 1):
+        print(f"{i}) Путь: {path}, Длина: {calculate_distance(path):.2f}")
+else:
+    print("Оптимальных путей не найдено.")
